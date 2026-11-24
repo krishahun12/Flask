@@ -12,6 +12,8 @@ jobs:
   test:
     name: Run Unit Tests
     runs-on: ubuntu-latest
+    env:
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
 
     steps:
       - name: Checkout repository
@@ -31,7 +33,7 @@ jobs:
         run: pytest -v
 
       - name: Send email notification on test failure
-        if: ${{ failure() && secrets.SMTP_SERVER != '' }}
+        if: ${{ failure() && env.SMTP_SERVER != '' }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -74,6 +76,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
     steps:
       - name: Download Docker image artifact
@@ -85,21 +90,21 @@ jobs:
         run: docker load -i flaskapp.tar
 
       - name: Log in to Docker Hub
-        if: ${{ secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.DOCKER_PASSWORD != '' }}
         uses: docker/login-action@v4
         with:
-          username: ${{ secrets.DOCKER_USERNAME || 'krisha2520' }}
+          username: ${{ env.DOCKER_USERNAME || 'krisha2520' }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Push image to Docker Hub
-        if: ${{ secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.DOCKER_PASSWORD != '' }}
         run: |
-          DOCKER_USER="${{ secrets.DOCKER_USERNAME || 'krisha2520' }}"
+          DOCKER_USER="${DOCKER_USERNAME:-krisha2520}"
           docker tag flaskapp:latest ${DOCKER_USER}/flaskapp:latest
           docker push ${DOCKER_USER}/flaskapp:latest
 
       - name: Warn if Docker Hub secret is missing
-        if: ${{ secrets.DOCKER_PASSWORD == '' }}
+        if: ${{ env.DOCKER_PASSWORD == '' }}
         run: echo "::warning::DOCKER_PASSWORD secret is not set in Repository Secrets. Add a Read & Write Docker Hub token to push to Docker Hub."
 
       - name: Log in to GitHub Container Registry (ghcr.io)
